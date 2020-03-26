@@ -33,6 +33,8 @@ public class WCountPerCategory {
                     ) throws IOException, InterruptedException {
 
       JSONObject jsonObj;
+      HashSet<String> reviewTerms = new HashSet<String>(); 
+
       try {
       jsonObj = (JSONObject) parser.parse(value.toString());
       }
@@ -41,17 +43,28 @@ public class WCountPerCategory {
         return;
       }
       String category = jsonObj.get("category").toString();
-      category = category.replace("\"", "");
+      category = category.replace("\"", "").trim();
 
       String review = jsonObj.get("reviewText").toString();
       StringTokenizer itr = new StringTokenizer(review, " .!?,;:<>()[]{}-_\"'~#&*%$");
+
+      String tmp;
       while (itr.hasMoreTokens()) {
-        String term = itr.nextToken().toLowerCase();
+        tmp = itr.nextToken().toLowerCase();
+        if (!stopwords.contains(tmp)){
+          reviewTerms.add(tmp);
+          }
+      }
+
+      String term;
+      Iterator<String> termIterator = reviewTerms.iterator();
+      while(termIterator.hasNext()){
+        term  = termIterator.next();
         if (term.length() > 1){
           word.set(term + "@" + category);
           context.write(word, ONE);
           }
-      }
+      }  
     }
   }
 

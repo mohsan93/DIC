@@ -19,8 +19,6 @@ import java.util.*;
 
 public class CategoryCount {
 
-  public static ArrayList<String> stopwords = new ArrayList<String>();
-
   public static class TokenizerMapper
        extends Mapper<Object, Text, Text, IntWritable>{
 
@@ -75,15 +73,6 @@ public class CategoryCount {
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
     //List<String> swords = new ArrayList<String>();
-    try {
-			Scanner scanner = new Scanner(new File(args[2]));
-			while (scanner.hasNextLine()) {
-				stopwords.add(scanner.nextLine().trim());
-			}
-			scanner.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
     System.exit(job.waitForCompletion(true) ? 0 : 1);
   }
 }
