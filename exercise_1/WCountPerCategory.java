@@ -99,14 +99,14 @@ public class WCountPerCategory {
 
   public static void main(String[] args) throws Exception {
     Configuration conf = new Configuration();
-    Job job = Job.getInstance(conf, "parsing");
+    Job job = Job.getInstance(conf, "WCountPerCategory");
     job.setNumReduceTasks(2);
     job.setJarByClass(WCountPerCategory.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumReducer.class);
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
-    job.setOutputValueClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
     //List<String> swords = new ArrayList<String>();
