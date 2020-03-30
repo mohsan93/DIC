@@ -26,10 +26,10 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class ChiSquareDB {
+public class ChiSquare {
 
   public static HashMap<String, Integer> categoryCounts = new HashMap<String, Integer>();
-  private static final Log LOG = LogFactory.getLog(ChiSquareDB.class);
+  private static final Log LOG = LogFactory.getLog(ChiSquare.class);
   public static class TokenizerMapper
        extends Mapper<Object, Text, Text, Text>{
     
@@ -41,12 +41,12 @@ public class ChiSquareDB {
       String[] raw = value.toString().split("\\s+");
       String[] termCat = raw[0].split("@");
       //Integer count = Integer.parseInt(raw[1].trim());
-      context.write(new Text(termCat[0].trim()), new Text(termCat[1] + "$$" + raw[1]));
+      context.write(new Text(termCat[0].trim()), new Text(termCat[1] + ":" + raw[1]));
     }
   }
 
   public static class IntSumReducer
-       extends Reducer<Text,Text,Text,Text> {
+       extends Reducer<Text,Text,Text,IntWritable> {
 
    
     
@@ -55,52 +55,17 @@ public class ChiSquareDB {
                        ) throws IOException, InterruptedException {
       
       
-      HashMap<String, String> termCounts = new HashMap<String, String>();
-      int i = 0;
-      /*String t_string;
+      HashMap<String, Integer> termCounts = new HashMap<String, Integer>();
       for (Text t : values){
-        t_string = t.toString();
-        t_string = t_string.substring(1, t_string.length() - 1);
-
-        String[] valueParts = t_string.split(",");
-        for (String v : valueParts){
-          //String[] splits = v.split("=");
-          termCounts.put("nope_" + Integer.toString(i), v);
-          i += 1;
-        }
-      }*/
-      String val;
-      String total = "";
-      for (Text t : values){
-        val = t.toString();
-        total += val + ",";
-        //termCounts.put(val.split("$woop$")[0], val.split("$woop$")[1]);
-      }
-      context.write(key, new Text(total.substring(0, total.length() - 1)));
-
-      /*
-      boolean checker = false;
-      for (Text t : values){
-        String[] valueParts = t.toString().split("\\:");
-        if (valueParts.length == 2){
+        String[] valueParts = t.toString().split(":");
         termCounts.put(valueParts[0].trim(), Integer.parseInt(valueParts[1]));
-        }
-        else{
-          checker = true;
-        }
       }
 
-      if (checker){
-        for (Text t : values){
-        context.write(key, t);
-        }
-      }
-      else{
-      context.write(key, new Text(termCounts.toString()));
-      } */ 
+      
+      
 
       //Calculating Chi Square:
-      /*int a = 0;
+      int a = 0;
       int b = 0;
       int c = 0;
       int d = 0;
@@ -135,7 +100,7 @@ public class ChiSquareDB {
         LOG.error(chisq);
         LOG.error(termCounts);
         context.write(new Text(key.toString() + "@" + keyG), new IntWritable(chisq));
-      } */
+      }
     }
   }
 
@@ -145,12 +110,12 @@ public class ChiSquareDB {
     FileSystem fileSystem = FileSystem.get(conf);
 
     job.setNumReduceTasks(2);
-    job.setJarByClass(ChiSquareDB.class);
+    job.setJarByClass(ChiSquare.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumReducer.class);
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
-    job.setOutputValueClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
     job.setMapOutputKeyClass(Text.class);
     job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
@@ -169,7 +134,7 @@ public class ChiSquareDB {
         System.out.println(categoryC[0].trim());
     }
 
-    System.out.println("categories:\n");
+    System.out.println("categories BITCH -------------------------------------------------------------------------");
     System.out.println(categoryCounts);
     System.exit(job.waitForCompletion(true) ? 0 : 1);
   }
