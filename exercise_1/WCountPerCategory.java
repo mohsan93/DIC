@@ -46,7 +46,7 @@ public class WCountPerCategory {
       category = category.replace("\"", "").trim();
 
       String review = jsonObj.get("reviewText").toString();
-      StringTokenizer itr = new StringTokenizer(review, " .!?,;:<>()[]{}-_\"'~#&*%$");
+      StringTokenizer itr = new StringTokenizer(review, " .!?,;:<>()[]{}-_\"`+~#&*%$");
 
       String tmp;
       while (itr.hasMoreTokens()) {
