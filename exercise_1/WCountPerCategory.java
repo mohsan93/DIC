@@ -16,10 +16,15 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import java.util.*; 
+import java.lang.Math;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import java.io.BufferedReader;
+import org.apache.hadoop.fs.FSDataInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public class WCountPerCategory {
-
-  public static ArrayList<String> stopwords = new ArrayList<String>();
 
   public static class TokenizerMapper
        extends Mapper<Object, Text, Text, IntWritable>{
@@ -31,9 +36,17 @@ public class WCountPerCategory {
 
     public void map(Object key, Text value, Context context
                     ) throws IOException, InterruptedException {
+      
+      ArrayList<String> stopwords = new ArrayList<String>();
+
+      Configuration config = context.getConfiguration();
+      String stopwordsCompact = config.get("stopwords");
+      for (String val : stopwordsCompact.split(",")){
+        stopwords.add(val);
+      }
+
 
       JSONObject jsonObj;
-      HashSet<String> reviewTerms = new HashSet<String>(); 
 
       try {
       jsonObj = (JSONObject) parser.parse(value.toString());
@@ -48,45 +61,22 @@ public class WCountPerCategory {
       String review = jsonObj.get("reviewText").toString();
       StringTokenizer itr = new StringTokenizer(review, " .!?,;:<>()[]{}-_\"`+~#&*%$");
 
-      String tmp;
-      while (itr.hasMoreTokens()) {
-        tmp = itr.nextToken().toLowerCase();
-        if (!stopwords.contains(tmp)){
-          reviewTerms.add(tmp);
-          }
-      }
-
       String term;
-      Iterator<String> termIterator = reviewTerms.iterator();
-      while(termIterator.hasNext()){
-        term  = termIterator.next();
-        if (term.length() > 1){
-          word.set(term + "@" + category);
-          context.write(word, ONE);
+      while (itr.hasMoreTokens()) {
+        String token = itr.nextToken();
+        for (String t : token.split("[0-9]+")){
+          if (t.length() > 1){
+            term = t.toLowerCase();
+            if (!stopwords.contains(term)){
+              //reviewTerms.add(tmp);
+              word.set(term + "@" + category);
+              context.write(word, ONE);
+            }
           }
+        }
       }  
     }
   }
-
-  /*public static class IntSumCombiner
-       extends Reducer<Text,IntWritable,Text,Text> {
-
-    public void reduce(Text key, Iterable<IntWritable> values,
-                       Context context
-                       ) throws IOException, InterruptedException {
-      int sum = 0;
-      for (IntWritable val : values) {
-        sum += val.get();
-      }
-
-      //splitting the key:
-      String[] keyParts = key.toString().split("@");
-      
-      if (keyParts[0].length() > 0){
-      context.write(new Text(keyParts[0]), new Text(keyParts[1] + ":" + Integer.toString(sum)));
-      }
-    }
-  }*/ 
 
   public static class IntSumReducer
        extends Reducer<Text,IntWritable,Text,IntWritable> {
@@ -95,13 +85,6 @@ public class WCountPerCategory {
                        Context context
                        ) throws IOException, InterruptedException {
       
-      //HashMap<String, String> categoryCounts = new HashMap<String, String>();
-      /*for (Text t : values){
-        String[] valueParts = t.toString().split(":");
-        categoryCounts.put(valueParts[0], valueParts[1]);
-      }
-
-      context.write(key, new Text(categoryCounts.toString())); */
       int sum = 0;
       for (IntWritable val : values) {
         sum += val.get();
@@ -111,7 +94,25 @@ public class WCountPerCategory {
   }
 
   public static void main(String[] args) throws Exception {
+
     Configuration conf = new Configuration();
+    FileSystem fileSystem = FileSystem.get(conf);
+
+    Path hdfsReadPath = new Path(args[2]);
+    FSDataInputStream inputStream = fileSystem.open(hdfsReadPath);
+
+    BufferedReader bufferedReader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+
+    String line = null;
+    String stopwords = "";
+    while ((line=bufferedReader.readLine())!=null){
+        stopwords += line + ",";
+    }
+    stopwords = stopwords.substring(0, stopwords.length() -1);
+    conf.set("stopwords", stopwords);
+
+
     Job job = Job.getInstance(conf, "WCountPerCategory");
     job.setNumReduceTasks(2);
     job.setJarByClass(WCountPerCategory.class);
@@ -123,17 +124,6 @@ public class WCountPerCategory {
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
     //List<String> swords = new ArrayList<String>();
-    try {
-			Scanner scanner = new Scanner(new File(args[2]));
-			while (scanner.hasNextLine()) {
-				stopwords.add(scanner.nextLine().trim());
-			}
-			scanner.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-    //split("\\s+");
-
     System.exit(job.waitForCompletion(true) ? 0 : 1);
   }
 }
