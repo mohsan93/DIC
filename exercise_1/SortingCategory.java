@@ -22,7 +22,8 @@ import org.apache.hadoop.fs.FileSystem;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-
+import org.apache.hadoop.io.WritableComparator;
+import org.apache.hadoop.io.WritableComparable;
 
 //Input: term@category  chisquare_value
 public class SortingCategory {
@@ -122,6 +123,21 @@ public class SortingCategory {
       }
    }
 
+
+   public static class MyKeyComparator extends WritableComparator {
+      public MyKeyComparator() {
+          super(Text.class, true);
+      }
+
+      @SuppressWarnings("rawtypes")
+      @Override
+      public int compare(WritableComparable w1, WritableComparable w2) {
+          Text key1 = (Text) w1;
+          Text key2 = (Text) w2;          
+          return -1 * key1.compareTo(key2);
+      }
+  } 
+
   public static class IntSumReducer
        extends Reducer<Text,Text,Text,Text> {
 
@@ -170,6 +186,7 @@ public class SortingCategory {
     Job job = Job.getInstance(conf, "SortingCategory");
     job.setNumReduceTasks(11);
     job.setPartitionerClass(ChiSquarePartitioner.class);
+    job.setSortComparatorClass(MyKeyComparator.class);
     job.setJarByClass(SortingCategory.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumReducer.class);
