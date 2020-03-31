@@ -28,7 +28,7 @@ import java.nio.charset.StandardCharsets;
 public class SortingCategory {
 
   public static class TokenizerMapper
-       extends Mapper<Object, Text, IntWritable, Text>{
+       extends Mapper<Object, Text, Text, Text>{
 
     private final static IntWritable ONE = new IntWritable(1);
     private Text word = new Text();
@@ -53,7 +53,7 @@ public class SortingCategory {
     Integer chiSq = Integer.parseInt(valueParsed[1]); 
     String val = valueParsed[0];
     
-    context.write(new IntWritable(chiSq), new Text(val));
+    context.write(new Text(Integer.toString(chiSq)), new Text(val));
     
     }
   }
@@ -62,10 +62,10 @@ public class SortingCategory {
   //Partitioner class
 	
    public static class ChiSquarePartitioner extends
-   Partitioner < IntWritable, Text >
+   Partitioner < Text, Text >
    {
       @Override
-      public int getPartition(IntWritable key, Text value, int numReduceTasks)
+      public int getPartition(Text key, Text value, int numReduceTasks)
       {
          String category = value.toString().split("@")[1];
          
@@ -90,7 +90,7 @@ public class SortingCategory {
          {
             return 3 % numReduceTasks;
          }
-         else if(category.equals("Cell_Phones_and_Accessiorie") || category.equals("Clothing_Shoes_and_Jewelry"))
+         else if(category.equals("Cell_Phones_and_Accessorie") || category.equals("Clothing_Shoes_and_Jewelry"))
          {
             return 4 % numReduceTasks;
          }
@@ -123,17 +123,23 @@ public class SortingCategory {
    }
 
   public static class IntSumReducer
-       extends Reducer<IntWritable,Text,Text,Text> {
+       extends Reducer<Text,Text,Text,Text> {
 
-    public void reduce(IntWritable key, Iterable<Text> values,
+    public void reduce(Text key, Iterable<Text> values,
                        Context context
                        ) throws IOException, InterruptedException {
       String category = "";
       String term = "";
       for (Text val : values) {
-        category = val.toString().split("@")[1];
-        term = val.toString().split("@")[0];
-        context.write(new Text(key.toString() + "@" + category), new Text(term));
+        String[] termCat = val.toString().split("@");
+        if (termCat.length == 2){
+          category = val.toString().split("@")[1];
+          term = val.toString().split("@")[0];
+          context.write(new Text(key.toString() + "@" + category), new Text(term));
+        }
+        else{
+          context.write(key, val);
+        }
       }
     }
   }
@@ -170,7 +176,7 @@ public class SortingCategory {
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
-    job.setMapOutputKeyClass(IntWritable.class);
+    job.setMapOutputKeyClass(Text.class);
     job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
