@@ -29,7 +29,7 @@ import org.apache.hadoop.io.WritableComparable;
 public class SortingCategory {
 
   public static class TokenizerMapper
-       extends Mapper<Object, Text, Text, Text>{
+       extends Mapper<Object, Text, IntWritable, Text>{
 
     private final static IntWritable ONE = new IntWritable(1);
     private Text word = new Text();
@@ -54,7 +54,7 @@ public class SortingCategory {
     Integer chiSq = Integer.parseInt(valueParsed[1]); 
     String val = valueParsed[0];
     
-    context.write(new Text(Integer.toString(chiSq)), new Text(val));
+    context.write(new IntWritable(chiSq), new Text(val));
     
     }
   }
@@ -63,10 +63,10 @@ public class SortingCategory {
   //Partitioner class
 	
    public static class ChiSquarePartitioner extends
-   Partitioner < Text, Text >
+   Partitioner < IntWritable, Text >
    {
       @Override
-      public int getPartition(Text key, Text value, int numReduceTasks)
+      public int getPartition(IntWritable key, Text value, int numReduceTasks)
       {
          String category = value.toString().split("@")[1];
          
@@ -126,22 +126,22 @@ public class SortingCategory {
 
    public static class MyKeyComparator extends WritableComparator {
       public MyKeyComparator() {
-          super(Text.class, true);
+          super(IntWritable.class, true);
       }
 
       @SuppressWarnings("rawtypes")
       @Override
       public int compare(WritableComparable w1, WritableComparable w2) {
-          Text key1 = (Text) w1;
-          Text key2 = (Text) w2;          
+          IntWritable key1 = (IntWritable) w1;
+          IntWritable key2 = (IntWritable) w2;          
           return -1 * key1.compareTo(key2);
       }
   } 
 
   public static class IntSumReducer
-       extends Reducer<Text,Text,Text,Text> {
+       extends Reducer<IntWritable,Text,Text,Text> {
 
-    public void reduce(Text key, Iterable<Text> values,
+    public void reduce(IntWritable key, Iterable<Text> values,
                        Context context
                        ) throws IOException, InterruptedException {
       String category = "";
@@ -152,9 +152,10 @@ public class SortingCategory {
           category = val.toString().split("@")[1];
           term = val.toString().split("@")[0];
           context.write(new Text(key.toString() + "@" + category), new Text(term));
+          //context.write(new Text("NOPE_In_IF"), val);
         }
         else{
-          context.write(key, val);
+          context.write(new Text("NOPE"), val);
         }
       }
     }
@@ -181,19 +182,17 @@ public class SortingCategory {
     categoryCounts = categoryCounts.substring(0, categoryCounts.length() -1);
     conf.set("categoryCounts", categoryCounts);
 
-
-
     Job job = Job.getInstance(conf, "SortingCategory");
     job.setNumReduceTasks(11);
     job.setPartitionerClass(ChiSquarePartitioner.class);
     job.setSortComparatorClass(MyKeyComparator.class);
     job.setJarByClass(SortingCategory.class);
     job.setMapperClass(TokenizerMapper.class);
-    job.setCombinerClass(IntSumReducer.class);
+    //job.setCombinerClass(IntSumReducer.class);
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
-    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputKeyClass(IntWritable.class);
     job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
