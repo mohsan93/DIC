@@ -37,7 +37,7 @@ public class ChiSquarePrepro {
                     ) throws IOException, InterruptedException {
       
       String[] raw = value.toString().split("\\s+");
-      String[] termCat = raw[0].split("@");
+      String[] termCat = raw[0].split("\\$");
       //Integer count = Integer.parseInt(raw[1].trim());
       context.write(new Text(termCat[0].trim()), new Text(termCat[1] + "$$" + raw[1]));
     }
