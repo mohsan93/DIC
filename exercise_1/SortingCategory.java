@@ -74,8 +74,80 @@ public class SortingCategory {
          {
             return 0;
          }
+
+         switch(category) 
+        { 
+            case "Automotive": 
+                return 0;
+               
+            case "Book": 
+                return 1;
+                
+            case "CDs_and_Vinyl": 
+                return 2;
+               
+            case "Health_and_Personal_Care": 
+                return 3;
+               
+            case "Kindle_Store": 
+                return 4;
+                
+            case "Apps_for_Android": 
+                return 5;
+               
+            case "Baby": 
+                return 6;
+               
+            case "Beauty": 
+                return 7; 
+                
+            case "Cell_Phones_and_Accessorie": 
+                return 8;
+               
+            case "Clothing_Shoes_and_Jewelry": 
+                return 9;
+               
+            case "Digital_Music": 
+                return 10;
+                
+            case "Electronic": 
+                return 11;
+               
+            case "Grocery_and_Gourmet_Food": 
+                return 12;
+               
+            case "Home_and_Kitche": 
+                return 13;
+                
+            case "Movies_and_TV": 
+                return 14;
+               
+            case "Musical_Instrument": 
+                return 15;
+               
+            case "Office_Product": 
+                return 16;
+                
+            case "Patio_Lawn_and_Garde": 
+                return 17;
+               
+            case "Pet_Supplie": 
+                return 18;
+               
+            case "Sports_and_Outdoor": 
+                return 19;
+                
+            case "Tools_and_Home_Improvement": 
+                return 20;
+               
+            case "Toys_and_Game": 
+                return 21;
+               
+            default: 
+                return 0; 
+        } 
          
-         if(category.equals("Automotive") || category.equals("Book"))
+         /*if(category.equals("Automotive") || category.equals("Book"))
          {
             return 0;
          }
@@ -118,8 +190,7 @@ public class SortingCategory {
          else if(category.equals("Tools_and_Home_Improvement") || category.equals("Toys_and_Game"))
          {
             return 10 % numReduceTasks;
-         }
-         return 0;
+         }*/ 
       }
    }
 
@@ -183,7 +254,7 @@ public class SortingCategory {
     conf.set("categoryCounts", categoryCounts);
 
     Job job = Job.getInstance(conf, "SortingCategory");
-    job.setNumReduceTasks(11);
+    job.setNumReduceTasks(22);
     job.setPartitionerClass(ChiSquarePartitioner.class);
     job.setSortComparatorClass(MyKeyComparator.class);
     job.setJarByClass(SortingCategory.class);
