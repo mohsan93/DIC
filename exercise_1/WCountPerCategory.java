@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
 public class WCountPerCategory {
 
   public static class TokenizerMapper
-       extends Mapper<Object, Text, Text, IntWritable>{
+       extends Mapper<Object, Text, Text, Text>{
 
     private final static IntWritable ONE = new IntWritable(1);
     private Text word = new Text();
@@ -59,6 +59,10 @@ public class WCountPerCategory {
       category = category.replace("\"", "").trim();
 
       String review = jsonObj.get("reviewText").toString();
+      String reviewerID = jsonObj.get("reviewerID").toString();
+      String asin = jsonObj.get("asin").toString();
+
+
       StringTokenizer itr = new StringTokenizer(review, " .!?,;:<>()[]{}-_\"`+~#&*%$");
 
       String term;
@@ -69,8 +73,8 @@ public class WCountPerCategory {
             term = t.toLowerCase();
             if (!stopwords.contains(term)){
               //reviewTerms.add(tmp);
-              word.set(term + "@" + category);
-              context.write(word, ONE);
+              word.set(term + "$" + category);
+              context.write(word, new Text(reviewerID + asin));
             }
           }
         }
@@ -78,18 +82,38 @@ public class WCountPerCategory {
     }
   }
 
-  public static class IntSumReducer
-       extends Reducer<Text,IntWritable,Text,IntWritable> {
 
-    public void reduce(Text key, Iterable<IntWritable> values,
+  public static class IntSumCombiner
+       extends Reducer<Text,Text,Text,Text> {
+
+    public void reduce(Text key, Iterable<Text> values,
                        Context context
                        ) throws IOException, InterruptedException {
       
-      int sum = 0;
-      for (IntWritable val : values) {
-        sum += val.get();
+      HashSet<String> uniqueDocs = new HashSet<String>(); 
+      for (Text val : values) {
+        uniqueDocs.add(val.toString());
       }
-      context.write(key, new IntWritable(sum));
+    
+     Iterator<String> it = uniqueDocs.iterator();
+     while(it.hasNext()){
+       context.write(key, new Text(it.next()));
+     }
+    }
+  }
+
+  public static class IntSumReducer
+       extends Reducer<Text,Text,Text,IntWritable> {
+
+    public void reduce(Text key, Iterable<Text> values,
+                       Context context
+                       ) throws IOException, InterruptedException {
+      
+      HashSet<String> uniqueDocs = new HashSet<String>(); 
+      for (Text val : values) {
+        uniqueDocs.add(val.toString());
+      }
+      context.write(key, new IntWritable(uniqueDocs.size()));
     }
   }
 
@@ -117,10 +141,12 @@ public class WCountPerCategory {
     job.setNumReduceTasks(2);
     job.setJarByClass(WCountPerCategory.class);
     job.setMapperClass(TokenizerMapper.class);
-    job.setCombinerClass(IntSumReducer.class);
+    job.setCombinerClass(IntSumCombiner.class);
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(IntWritable.class);
+    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
     //List<String> swords = new ArrayList<String>();
