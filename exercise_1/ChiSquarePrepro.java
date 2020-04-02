@@ -39,7 +39,9 @@ public class ChiSquarePrepro {
       String[] raw = value.toString().split("\\s+");
       String[] termCat = raw[0].split("\\$");
       //Integer count = Integer.parseInt(raw[1].trim());
-      context.write(new Text(termCat[0].trim()), new Text(termCat[1] + "$$" + raw[1]));
+      if (termCat.length > 1 && raw.length > 1){
+        context.write(new Text(termCat[0].trim()), new Text(termCat[1] + "$$" + raw[1]));
+      }
     }
   }
 
@@ -67,7 +69,7 @@ public class ChiSquarePrepro {
     Job job = Job.getInstance(conf, "ChiSquarePrepro");
     FileSystem fileSystem = FileSystem.get(conf);
 
-    job.setNumReduceTasks(2);
+    job.setNumReduceTasks(8);
     job.setJarByClass(ChiSquarePrepro.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumReducer.class);
