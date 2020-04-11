@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class ChiSquare {
+public class ChiSquareDB {
 
   //Input format: term  category$$count,category$$count...
 
@@ -40,29 +40,29 @@ public class ChiSquare {
     public void map(Object key, Text value, Context context
                     ) throws IOException, InterruptedException {
       
-      HashMap<String, Float> termCounts = new HashMap<String, Float>();
-      HashMap<String, Float> allCategories = new HashMap<String, Float>();
+      HashMap<String, Long> termCounts = new HashMap<String, Long>();
+      HashMap<String, Long> allCategories = new HashMap<String, Long>();
       String[] raw = value.toString().split("\\s+");
       String[] categoriesAndCounts = raw[1].split(",");
       
 
 
       for (String part : categoriesAndCounts){
-        termCounts.put(part.split("\\$\\$")[0], Float.parseFloat(part.split("\\$\\$")[1]));
+        termCounts.put(part.split("\\$\\$")[0], Long.parseLong(part.split("\\$\\$")[1]));
       }
 
       Configuration config = context.getConfiguration();
       String categoryCounts = config.get("categoryCounts");
       for (String val : categoryCounts.split(",")){
         String [] cat_count = val.split("\\s+");
-        allCategories.put(cat_count[0], Float.parseFloat(cat_count[1]));
+        allCategories.put(cat_count[0], Long.parseLong(cat_count[1]));
       }
       //Calculating Chi Square:
-      float a = 0;
-      float b = 0;
-      float c = 0;
-      float d = 0;
-      float chisq = 0;
+      long a = 0;
+      long b = 0;
+      long c = 0;
+      long d = 0;
+      long chisq = 0;
 
       //context.write(new Text(categoryCounts), new IntWritable(1));
 
@@ -91,52 +91,10 @@ public class ChiSquare {
         //Splitting up chisq calculation to make sure that double values are used (not float):
         //long upper = Math.round(Math.pow((a*d-b*c), 2));
         //long lower = ((a+b)*(a+c)*(b+d)*(c+d));
-        //long upper = Math.pow((a*d-b*c), 2);
+        //chisq = Math.round(upper/lower);
 
-        /*if (a >= 0 && b >= 0 && c >= 0 && d >= 0){
-          
-          long upper = 0;
-          long lower = 0;
-          long step1 = (b+d) * (c+d);
-          if (((b+d) != step1 / (c+d))){
-            step1 = Long.MAX_VALUE;
-          }
-          long step2 = (a+b) * (a+c);
-          if (((a+b) != step2 / (a+c))){
-            step2 = Long.MAX_VALUE;
-          }
-
-          long step3 = 0;
-          if (step1 == Long.MAX_VALUE && (step2 > 1 ) || step2 == Long.MAX_VALUE && (step1 > 1 )){
-            step3 = Long.MAX_VALUE;
-          }
-          else{
-            step3 = step1*step2;
-          }
-
-
-          long step4 = ((a*d)-(b*c)) * ((a*d)-(b*c));
-          if (((a*d)-(b*c)) == step4/((a*d)-(b*c))){
-            chisq = step4/step3;
-          }
-          else{
-            if (step3 > 1){
-            chisq = Long.MAX_VALUE / step3;
-            }
-            else{
-              chisq = Long.MAX_VALUE;
-            }
-          }
-        }
-        else{
-          chisq = -1;
-        }*/
-
-        chisq = ((a*d-b*c)*(a*d-b*c)) / ((a+b)*(a+c)*(b+d)*(c+d));
-        context.write(new Text(raw[0] + "@" + keyG), new Text(Float.toString(chisq))); //new Text(Long.toString(chisq)));
-        
-        //contex.write(new Text(raw[0] + "@" + keyG), new LongWritable(chisq));
-        
+        //context.write(new Text(raw[0] + "@" + keyG), new Text("a:"+Long.toString(a) + " ," + "b:"+Long.toString(b) + " ," +"c:"+Long.toString(c) + " ," +"a:"+Long.toString(d) + " ,"));
+        context.write(new Text(raw[0] + "@" + keyG), new Text(termCounts + " |||  all cats: " + allCategories));
         a = 0;
         b = 0;
         c = 0;
@@ -191,11 +149,11 @@ public class ChiSquare {
     conf.set("categoryCounts", categoryCounts);
 
     
-    Job job = Job.getInstance(conf, "ChiSquare");
+    Job job = Job.getInstance(conf, "ChiSquareDB");
     
 
     job.setNumReduceTasks(0);
-    job.setJarByClass(ChiSquare.class);
+    job.setJarByClass(ChiSquareDB.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumReducer.class);
     job.setReducerClass(IntSumReducer.class);

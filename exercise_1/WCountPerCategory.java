@@ -6,6 +6,7 @@ import java.util.Scanner;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -103,7 +104,7 @@ public class WCountPerCategory {
   }
 
   public static class IntSumReducer
-       extends Reducer<Text,Text,Text,IntWritable> {
+       extends Reducer<Text,Text,Text,LongWritable> {
 
     public void reduce(Text key, Iterable<Text> values,
                        Context context
@@ -113,7 +114,7 @@ public class WCountPerCategory {
       for (Text val : values) {
         uniqueDocs.add(val.toString());
       }
-      context.write(key, new IntWritable(uniqueDocs.size()));
+      context.write(key, new LongWritable(uniqueDocs.size()));
     }
   }
 
@@ -138,13 +139,13 @@ public class WCountPerCategory {
 
 
     Job job = Job.getInstance(conf, "WCountPerCategory");
-    job.setNumReduceTasks(2);
+    job.setNumReduceTasks(8);
     job.setJarByClass(WCountPerCategory.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumCombiner.class);
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
-    job.setOutputValueClass(IntWritable.class);
+    job.setOutputValueClass(LongWritable.class);
     job.setMapOutputKeyClass(Text.class);
     job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));

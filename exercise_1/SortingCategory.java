@@ -6,6 +6,8 @@ import java.util.Scanner;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -29,9 +31,8 @@ import org.apache.hadoop.io.WritableComparable;
 public class SortingCategory {
 
   public static class TokenizerMapper
-       extends Mapper<Object, Text, IntWritable, Text>{
+       extends Mapper<Object, Text, FloatWritable, Text>{
 
-    private final static IntWritable ONE = new IntWritable(1);
     private Text word = new Text();
     private final JSONParser parser = new JSONParser();
     
@@ -51,10 +52,10 @@ public class SortingCategory {
     } */
 
     String[] valueParsed = value.toString().split("\\s+");
-    Integer chiSq = Integer.parseInt(valueParsed[1]); 
+    float chiSq = Float.parseFloat(valueParsed[1]); 
     String val = valueParsed[0];
     
-    context.write(new IntWritable(chiSq), new Text(val));
+    context.write(new FloatWritable(chiSq), new Text(val));
     
     }
   }
@@ -63,10 +64,10 @@ public class SortingCategory {
   //Partitioner class
 	
    public static class ChiSquarePartitioner extends
-   Partitioner < IntWritable, Text >
+   Partitioner < FloatWritable, Text >
    {
       @Override
-      public int getPartition(IntWritable key, Text value, int numReduceTasks)
+      public int getPartition(FloatWritable key, Text value, int numReduceTasks)
       {
          String category = value.toString().split("@")[1];
          
@@ -197,22 +198,22 @@ public class SortingCategory {
 
    public static class MyKeyComparator extends WritableComparator {
       public MyKeyComparator() {
-          super(IntWritable.class, true);
+          super(FloatWritable.class, true);
       }
 
       @SuppressWarnings("rawtypes")
       @Override
       public int compare(WritableComparable w1, WritableComparable w2) {
-          IntWritable key1 = (IntWritable) w1;
-          IntWritable key2 = (IntWritable) w2;          
+          FloatWritable key1 = (FloatWritable) w1;
+          FloatWritable key2 = (FloatWritable) w2;          
           return -1 * key1.compareTo(key2);
       }
   } 
 
   public static class IntSumReducer
-       extends Reducer<IntWritable,Text,Text,Text> {
+       extends Reducer<FloatWritable,Text,Text,Text> {
 
-    public void reduce(IntWritable key, Iterable<Text> values,
+    public void reduce(FloatWritable key, Iterable<Text> values,
                        Context context
                        ) throws IOException, InterruptedException {
       String category = "";
@@ -263,7 +264,7 @@ public class SortingCategory {
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
-    job.setMapOutputKeyClass(IntWritable.class);
+    job.setMapOutputKeyClass(FloatWritable.class);
     job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
