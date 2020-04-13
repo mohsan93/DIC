@@ -40,29 +40,29 @@ public class ChiSquare {
     public void map(Object key, Text value, Context context
                     ) throws IOException, InterruptedException {
       
-      HashMap<String, Float> termCounts = new HashMap<String, Float>();
-      HashMap<String, Float> allCategories = new HashMap<String, Float>();
+      HashMap<String, Double> termCounts = new HashMap<String, Double>();
+      HashMap<String, Double> allCategories = new HashMap<String, Double>();
       String[] raw = value.toString().split("\\s+");
       String[] categoriesAndCounts = raw[1].split(",");
       
 
 
       for (String part : categoriesAndCounts){
-        termCounts.put(part.split("\\$\\$")[0], Float.parseFloat(part.split("\\$\\$")[1]));
+        termCounts.put(part.split("\\$\\$")[0], Double.parseDouble(part.split("\\$\\$")[1]));
       }
 
       Configuration config = context.getConfiguration();
       String categoryCounts = config.get("categoryCounts");
       for (String val : categoryCounts.split(",")){
         String [] cat_count = val.split("\\s+");
-        allCategories.put(cat_count[0], Float.parseFloat(cat_count[1]));
+        allCategories.put(cat_count[0], Double.parseDouble(cat_count[1]));
       }
       //Calculating Chi Square:
-      float a = 0;
-      float b = 0;
-      float c = 0;
-      float d = 0;
-      float chisq = 0;
+      double a = 0.0;
+      double b = 0.0;
+      Double c = 0.0;
+      double d = 0.0;
+      double chisq = 0.0;
 
       //context.write(new Text(categoryCounts), new IntWritable(1));
 
@@ -88,7 +88,7 @@ public class ChiSquare {
         }
 
         //chisq = (long) Math.round((Math.pow((a*d-b*c), 2))/((a+b)*(a+c)*(b+d)*(c+d)));
-        //Splitting up chisq calculation to make sure that double values are used (not float):
+        //Splitting up chisq calculation to make sure that double values are used (not Double):
         //long upper = Math.round(Math.pow((a*d-b*c), 2));
         //long lower = ((a+b)*(a+c)*(b+d)*(c+d));
         //long upper = Math.pow((a*d-b*c), 2);
@@ -133,14 +133,14 @@ public class ChiSquare {
         }*/
 
         chisq = ((a*d-b*c)*(a*d-b*c)) / ((a+b)*(a+c)*(b+d)*(c+d));
-        context.write(new Text(raw[0] + "@" + keyG), new Text(Float.toString(chisq))); //new Text(Long.toString(chisq)));
+        context.write(new Text(raw[0] + "@" + keyG), new Text(Double.toString(chisq))); //new Text(Long.toString(chisq)));
         
         //contex.write(new Text(raw[0] + "@" + keyG), new LongWritable(chisq));
         
-        a = 0;
-        b = 0;
-        c = 0;
-        d = 0;
+        a = 0.0;
+        b = 0.0;
+        c = 0.0;
+        d = 0.0;
       }
     }
   }

@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.FloatWritable;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -27,11 +28,11 @@ import java.nio.charset.StandardCharsets;
 import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.io.WritableComparable;
 
-//Input: term@category  chisquare_value
+//Input: term$$$$category  chisquare_value
 public class SortingCategory {
 
   public static class TokenizerMapper
-       extends Mapper<Object, Text, FloatWritable, Text>{
+       extends Mapper<Object, Text, DoubleWritable, Text>{
 
     private Text word = new Text();
     private final JSONParser parser = new JSONParser();
@@ -52,10 +53,10 @@ public class SortingCategory {
     } */
 
     String[] valueParsed = value.toString().split("\\s+");
-    float chiSq = Float.parseFloat(valueParsed[1]); 
+    Double chiSq = Double.parseDouble(valueParsed[1]); 
     String val = valueParsed[0];
     
-    context.write(new FloatWritable(chiSq), new Text(val));
+    context.write(new DoubleWritable(chiSq), new Text(val));
     
     }
   }
@@ -64,10 +65,10 @@ public class SortingCategory {
   //Partitioner class
 	
    public static class ChiSquarePartitioner extends
-   Partitioner < FloatWritable, Text >
+   Partitioner < DoubleWritable, Text >
    {
       @Override
-      public int getPartition(FloatWritable key, Text value, int numReduceTasks)
+      public int getPartition(DoubleWritable key, Text value, int numReduceTasks)
       {
          String category = value.toString().split("@")[1];
          
@@ -198,22 +199,22 @@ public class SortingCategory {
 
    public static class MyKeyComparator extends WritableComparator {
       public MyKeyComparator() {
-          super(FloatWritable.class, true);
+          super(DoubleWritable.class, true);
       }
 
       @SuppressWarnings("rawtypes")
       @Override
       public int compare(WritableComparable w1, WritableComparable w2) {
-          FloatWritable key1 = (FloatWritable) w1;
-          FloatWritable key2 = (FloatWritable) w2;          
+          DoubleWritable key1 = (DoubleWritable) w1;
+          DoubleWritable key2 = (DoubleWritable) w2;          
           return -1 * key1.compareTo(key2);
       }
   } 
 
   public static class IntSumReducer
-       extends Reducer<FloatWritable,Text,Text,Text> {
+       extends Reducer<DoubleWritable,Text,Text,Text> {
 
-    public void reduce(FloatWritable key, Iterable<Text> values,
+    public void reduce(DoubleWritable key, Iterable<Text> values,
                        Context context
                        ) throws IOException, InterruptedException {
       String category = "";
@@ -225,9 +226,6 @@ public class SortingCategory {
           term = val.toString().split("@")[0];
           context.write(new Text(key.toString() + "@" + category), new Text(term));
           //context.write(new Text("NOPE_In_IF"), val);
-        }
-        else{
-          context.write(new Text("NOPE"), val);
         }
       }
     }
@@ -264,7 +262,7 @@ public class SortingCategory {
     job.setReducerClass(IntSumReducer.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
-    job.setMapOutputKeyClass(FloatWritable.class);
+    job.setMapOutputKeyClass(DoubleWritable.class);
     job.setMapOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
