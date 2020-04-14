@@ -28,9 +28,19 @@ import java.nio.charset.StandardCharsets;
 import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.io.WritableComparable;
 
-//Input: term$$$$category  chisquare_value
 public class SortingCategory {
-
+  /***************************************
+    Now  that the ChiSquare values for each term per catgory have been calculated (input: <(term$$category),chisquare>),
+    I wanted to sort the terms for each category by its chiSquare value and write it to a different file for each category.
+    For the sorting a custom comparator (MyKeyComparator) is implemented that returns the sorted keys in descending order.
+    To create an output file for each category (containing the sorted terms in descending order) i decided to use a partitioner.
+    The mapper outputs: <chisquare, (term$$category)>, this is then given to the partitioner. The partitioner takes a 
+    look at the category in the value-part of the key-value pair and decides then to which reducer the tuple is sent to.
+    Since there are 22 categories, there are 22 reducers used (not the most efficient way), the reducers then sort their entries
+    in descending order of the key (chisquare value) and output it to a file each.
+   **************************************/
+  
+  //mapper, the key-output in this case is DoubleWriteable because of the ChiSquare Value
   public static class TokenizerMapper
        extends Mapper<Object, Text, DoubleWritable, Text>{
 
@@ -41,16 +51,6 @@ public class SortingCategory {
     public void map(Object key, Text value, Context context
                     ) throws IOException, InterruptedException {
 
-      
-      /*HashMap<String, Integer> allCategories = new HashMap<String, Integer>();
-      Configuration config = context.getConfiguration();
-      String categoryCounts = config.get("categoryCounts");
-      for (String val : categoryCounts.split(",")){
-        String [] cat_count = val.split("\\s+");
-        allCategories.put(cat_count[0], Integer.parseInt(cat_count[1]));
-      }
-      context.write(word, ONE);
-    } */
 
     String[] valueParsed = value.toString().split("\\s+");
     Double chiSq = Double.parseDouble(valueParsed[1]); 
@@ -62,8 +62,12 @@ public class SortingCategory {
   }
 
 
-  //Partitioner class
-	
+    //Partitioner class
+    //The Partitioner takes a look at the category in the value part of the pair and then
+    //decided to which reducer to send the tuple to.
+    //This is done via a switch-case statement.
+    //It returns an integer, ranging from 0 to 21, so there are a total of 22 reducers,
+    //one for each category.
    public static class ChiSquarePartitioner extends
    Partitioner < DoubleWritable, Text >
    {
@@ -148,55 +152,10 @@ public class SortingCategory {
             default: 
                 return 0; 
         } 
-         
-         /*if(category.equals("Automotive") || category.equals("Book"))
-         {
-            return 0;
-         }
-         else if(category.equals("CDs_and_Vinyl") || category.equals("Health_and_Personal_Care"))
-         {
-            return 1 % numReduceTasks;
-         }
-         else if(category.equals("Kindle_Store") || category.equals("Apps_for_Android"))
-         {
-            return 2 % numReduceTasks;
-         }
-         else if(category.equals("Baby") || category.equals("Beauty"))
-         {
-            return 3 % numReduceTasks;
-         }
-         else if(category.equals("Cell_Phones_and_Accessorie") || category.equals("Clothing_Shoes_and_Jewelry"))
-         {
-            return 4 % numReduceTasks;
-         }
-         else if(category.equals("Digital_Music") || category.equals("Electronic"))
-         {
-            return 5 % numReduceTasks;
-         }
-         else if(category.equals("Grocery_and_Gourmet_Food") || category.equals("Home_and_Kitche"))
-         {
-            return 6 % numReduceTasks;
-         }
-         else if(category.equals("Movies_and_TV") || category.equals("Musical_Instrument"))
-         {
-            return 7 % numReduceTasks;
-         }
-         else if(category.equals("Office_Product") || category.equals("Patio_Lawn_and_Garde"))
-         {
-            return 8 % numReduceTasks;
-         }
-         else if(category.equals("Pet_Supplie") || category.equals("Sports_and_Outdoor"))
-         {
-            return 9 % numReduceTasks;
-         }
-         else if(category.equals("Tools_and_Home_Improvement") || category.equals("Toys_and_Game"))
-         {
-            return 10 % numReduceTasks;
-         }*/ 
       }
    }
 
-
+    //Custom Comparator, returns the sorted keys in descending order
    public static class MyKeyComparator extends WritableComparator {
       public MyKeyComparator() {
           super(DoubleWritable.class, true);
@@ -210,6 +169,11 @@ public class SortingCategory {
           return -1 * key1.compareTo(key2);
       }
   } 
+
+ //There is a reducer for each category.
+ //The reducer accepts the key-value pair <chisquare, (term$$category)>, and outputs 
+ //<(chisquare@category), term> via simple string manipulation.
+ //output is sorted by chisquare value.
 
   public static class IntSumReducer
        extends Reducer<DoubleWritable,Text,Text,Text> {
@@ -234,7 +198,7 @@ public class SortingCategory {
   public static void main(String[] args) throws Exception {
     Configuration conf = new Configuration();
 
-    String categoryCounts = "";
+    /*String categoryCounts = "";
     FileSystem fileSystem = FileSystem.get(conf);
 
     Path hdfsReadPath = new Path(args[2]);
@@ -250,9 +214,10 @@ public class SortingCategory {
         categoryCounts += line + ",";
     }
     categoryCounts = categoryCounts.substring(0, categoryCounts.length() -1);
-    conf.set("categoryCounts", categoryCounts);
+    conf.set("categoryCounts", categoryCounts); */ 
 
     Job job = Job.getInstance(conf, "SortingCategory");
+    //number of reducer tasks is set to 22, one for each category.
     job.setNumReduceTasks(22);
     job.setPartitionerClass(ChiSquarePartitioner.class);
     job.setSortComparatorClass(MyKeyComparator.class);

@@ -28,10 +28,19 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class ChiSquare {
+  /***************************************
+  This MapReduce Job is used to calculate the ChiSquare Value for each term of every category.
+  The input for this job comes from ChiSquarePrepro.java and looks like this: <term, (category$$count, category$$count,...)>.
+  Here only the mapper is used, no reducer is needed.
+  First, the total number of documents for each category are loaded from hdfs in the main method and written to the context
+  configuration to be later retrieved by each mapper. It is saved to the hashmap variable allCategories.
+  Next, in the mapper, for each term (key), the comma separated value line is split by $$ and put into a hashmap, like so:
+  HashMap<String, Double> termCounts = HashMap<Category, Count>.
+  The calculation of the ChiSquare is then straight forward, a, b, c and d (see slides) are calculated via the two hashmaps.
+   **************************************/
+  
 
   //Input format: term  category$$count,category$$count...
-
-  //private static final Log LOG = LogFactory.getLog(ChiSquare.class);
   public static class TokenizerMapper
        extends Mapper<Object, Text, Text, Text>{
     
@@ -51,6 +60,7 @@ public class ChiSquare {
         termCounts.put(part.split("\\$\\$")[0], Double.parseDouble(part.split("\\$\\$")[1]));
       }
 
+      //Get the categoryCounts hashmap from the context configuration
       Configuration config = context.getConfiguration();
       String categoryCounts = config.get("categoryCounts");
       for (String val : categoryCounts.split(",")){
@@ -64,7 +74,10 @@ public class ChiSquare {
       double d = 0.0;
       double chisq = 0.0;
 
-      //context.write(new Text(categoryCounts), new IntWritable(1));
+      //a, b, c and d are calculated as described in the slides
+      //using the two hashmaps categoryCounts and termCounts, the first one
+      //containing the number of documents per category, the second one containing
+      //the number of documents per category for a single term.
 
       for ( String keyG : allCategories.keySet() ) {
         if (termCounts.containsKey(keyG)){
@@ -87,56 +100,13 @@ public class ChiSquare {
           }
         }
 
-        //chisq = (long) Math.round((Math.pow((a*d-b*c), 2))/((a+b)*(a+c)*(b+d)*(c+d)));
-        //Splitting up chisq calculation to make sure that double values are used (not Double):
-        //long upper = Math.round(Math.pow((a*d-b*c), 2));
-        //long lower = ((a+b)*(a+c)*(b+d)*(c+d));
-        //long upper = Math.pow((a*d-b*c), 2);
-
-        /*if (a >= 0 && b >= 0 && c >= 0 && d >= 0){
-          
-          long upper = 0;
-          long lower = 0;
-          long step1 = (b+d) * (c+d);
-          if (((b+d) != step1 / (c+d))){
-            step1 = Long.MAX_VALUE;
-          }
-          long step2 = (a+b) * (a+c);
-          if (((a+b) != step2 / (a+c))){
-            step2 = Long.MAX_VALUE;
-          }
-
-          long step3 = 0;
-          if (step1 == Long.MAX_VALUE && (step2 > 1 ) || step2 == Long.MAX_VALUE && (step1 > 1 )){
-            step3 = Long.MAX_VALUE;
-          }
-          else{
-            step3 = step1*step2;
-          }
-
-
-          long step4 = ((a*d)-(b*c)) * ((a*d)-(b*c));
-          if (((a*d)-(b*c)) == step4/((a*d)-(b*c))){
-            chisq = step4/step3;
-          }
-          else{
-            if (step3 > 1){
-            chisq = Long.MAX_VALUE / step3;
-            }
-            else{
-              chisq = Long.MAX_VALUE;
-            }
-          }
-        }
-        else{
-          chisq = -1;
-        }*/
-
+        //numerical calculation of the chisquare value.
         chisq = ((a*d-b*c)*(a*d-b*c)) / ((a+b)*(a+c)*(b+d)*(c+d));
-        context.write(new Text(raw[0] + "@" + keyG), new Text(Double.toString(chisq))); //new Text(Long.toString(chisq)));
+
+        //Outputs <(term@category), ChiSquare Value> key value pairs.
+        context.write(new Text(raw[0] + "@" + keyG), new Text(Double.toString(chisq)));
         
-        //contex.write(new Text(raw[0] + "@" + keyG), new LongWritable(chisq));
-        
+        //resetting the values after each loop
         a = 0.0;
         b = 0.0;
         c = 0.0;
@@ -154,25 +124,19 @@ public class ChiSquare {
                        Context context
                        ) throws IOException, InterruptedException {
       
-      
-      HashMap<String, String> termCounts = new HashMap<String, String>();
-      int i = 0;
-     
-      String val;
-      String total = "";
-      for (Text t : values){
-        val = t.toString();
-        total += val + ",";
-        //termCounts.put(val.split("$woop$")[0], val.split("$woop$")[1]);
+      for (Text v : values){
+        context.write(key, v);    
       }
-      context.write(key, new Text(total.substring(0, total.length() - 1)));    
     }
   }
 
   public static void main(String[] args) throws Exception {
 
     Configuration conf = new Configuration();
+
+    //creating string variable to contain the categoryCounts.
     String categoryCounts = "";
+    //preamble to connect to hadoop file system and read the file via BufferedReader.
     FileSystem fileSystem = FileSystem.get(conf);
 
     Path hdfsReadPath = new Path(args[2]);
@@ -184,16 +148,17 @@ public class ChiSquare {
     String line = null;
     
     while ((line=bufferedReader.readLine())!=null){
-        //String [] categoryC = line.split("\\s+");
         categoryCounts += line + ",";
     }
     categoryCounts = categoryCounts.substring(0, categoryCounts.length() -1);
+    //write a comma separated string (category  count, category  count, ...)
+    //to the context
     conf.set("categoryCounts", categoryCounts);
 
     
     Job job = Job.getInstance(conf, "ChiSquare");
     
-
+    //number of reducer tasks set to 0 because we dont need reducers for this one.
     job.setNumReduceTasks(0);
     job.setJarByClass(ChiSquare.class);
     job.setMapperClass(TokenizerMapper.class);

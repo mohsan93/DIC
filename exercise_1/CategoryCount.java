@@ -18,7 +18,12 @@ import org.json.simple.parser.ParseException;
 import java.util.*; 
 
 public class CategoryCount {
+  /***************************************
+  This MapReduce Job is used to count the total number of documents per category in the devset.
+   **************************************/
 
+  //the mapper reads the raw json files and parses them, then, the category is read and 
+  //an IntWriteable with value 1 is emitted as the value, the key is the category.
   public static class TokenizerMapper
        extends Mapper<Object, Text, Text, IntWritable>{
 
@@ -29,7 +34,8 @@ public class CategoryCount {
 
     public void map(Object key, Text value, Context context
                     ) throws IOException, InterruptedException {
-
+      
+      //JSONObject to parse the json file
       JSONObject jsonObj;
       try {
       jsonObj = (JSONObject) parser.parse(value.toString());
@@ -38,14 +44,16 @@ public class CategoryCount {
         e.printStackTrace();
         return;
       }
+      //reading the category from the file
       String category = jsonObj.get("category").toString();
-      //StringTokenizer itr = new StringTokenizer(review, " .!?,;:()[]{}-_\"'~#&*%$");
       category = category.replace("\"", "");
       word.set(category.trim());
       context.write(word, ONE);
     }
   }
 
+  //The reducer takes on the key (category) value (an iterable of intwriteables)
+  //and calculates the sum of the intwriteables = the total number of documents per category
   public static class IntSumReducer
        extends Reducer<Text,IntWritable,Text,IntWritable> {
 

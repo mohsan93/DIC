@@ -27,7 +27,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class ChiSquarePrepro {
+  /***************************************
+  This MapReduce Job is an interim job, kind of a preprocessing step for the acutal ChiSquare job.
+  What does it do? The WCountPerCategory.java MapReduce Job outputs <(term$category),counts> key-value
+  pairs. For easier processing, i want the output to look like this: <term, (category$$count, category$$count,...)>.
+  So the count of unique documents for each category the term exists in are written in the same line, separated by comma.
+  It outputs one line for each term.
+   **************************************/
 
+  //Mapper, standard setting, takes on Text and outputs Text.
   public static class TokenizerMapper
        extends Mapper<Object, Text, Text, Text>{
     
@@ -45,6 +53,7 @@ public class ChiSquarePrepro {
     }
   }
 
+  //Here the reducer is used to write all values of the same key (term) into one comma separated line.
   public static class IntSumReducer
        extends Reducer<Text,Text,Text,Text> {
 
